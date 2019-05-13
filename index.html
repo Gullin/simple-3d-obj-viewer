@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title></title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link rel="stylesheet" href="lib\bootstrap-4.1.2-dist\css\bootstrap.min.css">
+	<style>
+		html,
+		body {
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+		}
+
+		body {
+			color: #000;
+			background-color: #fff;
+			margin: 0px;
+			overflow: hidden;
+		}
+
+		a {
+			text-decoration: none;
+		}
+
+		#tools {
+			position: absolute;
+			top: 0px;
+			width: 100%;
+			padding: 5px;
+			box-sizing: border-box;
+			display: none;
+		}
+
+		#tools a {
+			color: blue;
+		}
+
+		#tools>* {
+			margin: 0.2em 0px;
+		}
+
+		#version {
+			position: absolute;
+			bottom: 0.3em;
+			right: 0.3em;
+			color: rgb(87, 87, 87);
+			font-size: 0.7em;
+		}
+
+		#loading-container {
+			position: absolute;
+			top: 50%;
+			left: 47%;
+			text-align: center;
+		}
+
+		/* https://loading.io/css/ */
+		.lds-ellipsis {
+			display: inline-block;
+			position: relative;
+			width: 64px;
+			height: 64px;
+		}
+
+		.lds-ellipsis div {
+			position: absolute;
+			/* top: 27px; */
+			width: 11px;
+			height: 11px;
+			border-radius: 50%;
+			background: rgb(0, 0, 0);
+			animation-timing-function: cubic-bezier(0, 1, 1, 0);
+		}
+
+		.lds-ellipsis div:nth-child(1) {
+			left: 6px;
+			animation: lds-ellipsis1 0.6s infinite;
+		}
+
+		.lds-ellipsis div:nth-child(2) {
+			left: 6px;
+			animation: lds-ellipsis2 0.6s infinite;
+		}
+
+		.lds-ellipsis div:nth-child(3) {
+			left: 26px;
+			animation: lds-ellipsis2 0.6s infinite;
+		}
+
+		.lds-ellipsis div:nth-child(4) {
+			left: 45px;
+			animation: lds-ellipsis3 0.6s infinite;
+		}
+
+		@keyframes lds-ellipsis1 {
+			0% {
+				transform: scale(0);
+			}
+
+			100% {
+				transform: scale(1);
+			}
+		}
+
+		@keyframes lds-ellipsis3 {
+			0% {
+				transform: scale(1);
+			}
+
+			100% {
+				transform: scale(0);
+			}
+		}
+
+		@keyframes lds-ellipsis2 {
+			0% {
+				transform: translate(0, 0);
+			}
+
+			100% {
+				transform: translate(19px, 0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div id="loading-container">
+		Läser in modell <br>
+		<div class="lds-ellipsis">
+			<div></div>
+			<div></div>
+			<div></div>
+			<div></div>
+		</div>
+	</div>
+
+	<div id="tools">
+		<!-- <a href="#" onclick="initCamera();">init camera</a> -->
+		<button type="button" id="initialView" class="btn btn-light btn-sm disabled" onclick="initView();">Initial
+			vy</button>
+		<br>
+		<div class="btn-group btn-group-toggle" data-toggle="buttons">
+			<label class="btn  btn-light btn-sm btn-secondary active disabled">
+				<input type="radio" name="options" id="cameraOptionPerspective" autocomplete="off" checked
+					onchange="changeCamera(this.id)"> Perspektiv
+			</label>
+			<label class="btn  btn-light btn-sm btn-secondary disabled">
+				<input type="radio" name="options" id="cameraOptionOrtho" autocomplete="off"
+					onchange="changeCamera(this.id)"> Orto
+			</label>
+		</div>
+	</div>
+
+	<div id="version"></div>
+
+
+	<script src="lib/three.js/three.min.js"></script>
+	<script src="lib/three.js/controls/OrbitControls.js"></script>
+
+	<script src="lib/three.js/loaders/DDSLoader.js"></script>
+	<script src="lib/three.js/loaders/MTLLoader.js"></script>
+	<script src="lib/three.js/loaders/OBJLoader.js"></script>
+
+
+	<script src="lib/WebGL.js"></script>
+
+	<script src="lib\jquery-3.0.0\jquery-3.0.0.min.js"></script>
+	<script src="lib\bootstrap-4.1.2-dist\js\bootstrap.bundle.min.js"></script>
+
+	<script src="settings.js"></script>
+	<script>
+
+		if (WEBGL.isWebGLAvailable() === false) {
+
+			document.body.appendChild(WEBGL.getWebGLErrorMessage());
+
+		}
+
+
+		// Titel på sida
+		if (settings.model.name) {
+			document.title = "3D-modell | " + settings.model.name;
+		}
+		else {
+			document.title = "3D-modell";
+		}
+
+
+
+		// settings
+		var screenWidth = (window.innerWidth != 0) ? window.innerWidth : settings.view.defaultSize.width;
+		var screenHeight = (window.innerHeight != 0) ? window.innerHeight : settings.view.defaultSize.height;
+		var screenAspect = screenWidth / screenHeight;
+
+		var model = settings.model.obj;
+		var modelRelPathFileObj = model.objFolderPath;
+		var modelRelPathFileMtl = model.mtlFolderPath;
+		var modelFileObj = model.objFilePath;
+		var modelFileMtl = model.mtlFilePath;
+
+		var cameraInitial = settings.view.cameraInitial;
+
+		var camera, controls, scene, renderer, object;
+		var cameraPerspective, cameraOrtho;
+		var activeCamera;
+		var cameraRig;
+		var frustumSize = settings.view.frustumSize;
+		var cameraScaleOffset = settings.view.cameraInitial.offsetFactor || 1;
+		var ambientLight = new THREE.AmbientLight(0xcccccc, 0.8);
+		var pointLightPerspective = new THREE.PointLight(0xffffff, 0.4);
+		var pointLightOrtho = new THREE.PointLight(0xffffff, 0.4);
+	
+		var url = new URL(window.location.href);
+		var autoRotate = url.searchParams.get("autoRotate")
+		var autoRotateSpeed = url.searchParams.get("autoRotateSpeed")
+		var toolsDisable = url.searchParams.get("toolsDisable")
+		if (settings.debug) {
+			console.log("autoRotate from URL");
+			console.log(autoRotate);
+			console.log("autoRotateSpeed from URL");
+			console.log(autoRotateSpeed);
+			console.log("toolsDisable from URL");
+			console.log(toolsDisable);
+		}
+
+
+		// Aktiverar platshållare för verktyg och versionsinformation
+		if ( !(toolsDisable == 1) ) {
+			if (settings.tools.active || toolsDisable === 0) {
+				document.getElementById("version").innerHTML = settings.version;
+				document.getElementById("tools").style.display = "block";
+			}
+		}
+
+
+
+		var startTime = Date.now();
+		loadModel(function () {
+
+			run();
+
+		});
+
+
+		function run() {
+
+			var modelLoadTime = Date.now() - startTime;
+			if (settings.debug) {
+				console.log("Laddningstid (modell) " + modelLoadTime + " ms");
+			}
+
+
+			var delay = 0;
+			if (settings.model.totalDelayTime && ((settings.model.totalDelayTime - modelLoadTime) > 0)) {
+				delay = settings.model.totalDelayTime - modelLoadTime;
+			}
+
+			if (settings.debug) {
+				console.log("V�nttid " + delay);
+			}
+
+			setTimeout(
+
+				function () {
+
+					init();
+					animate();
+
+					// Stänger av laddningsindikation
+					document.getElementById("loading-container").style.display = "none";
+
+					// Aktiverar verktygsknappar när modell har laddat och verktygen inte är avstängda
+					document.getElementById("initialView").classList.remove("disabled");
+
+					var cameraLabelRadiobuttons = document.getElementsByTagName("label");
+					for (var i = 0; i < cameraLabelRadiobuttons.length; i++) {
+						if (cameraLabelRadiobuttons[i].children[0].id === activeCamera.name) {
+							cameraLabelRadiobuttons[i].children[0].checked = true;
+							cameraLabelRadiobuttons[i].classList.add("active");
+						}
+						else {
+							cameraLabelRadiobuttons[i].children[0].checked = false;
+							cameraLabelRadiobuttons[i].classList.remove("active");
+						}
+
+						cameraLabelRadiobuttons[i].classList.remove("disabled");
+					}
+
+					if (settings.debug) {
+						console.log("Laddningstid (total) " + (Date.now() - startTime) + " ms");
+					}
+
+				}
+
+				, delay
+			);
+
+		}
+
+
+
+		function init() {
+
+			// Cameras
+
+			cameraPerspective = new THREE.PerspectiveCamera(cameraInitial.fieldOfView, screenAspect, cameraInitial.near, cameraInitial.far);
+			cameraPerspective.name = "cameraOptionPerspective";
+
+			cameraOrtho = new THREE.OrthographicCamera(0.5 * frustumSize * screenAspect / -2, 0.5 * frustumSize * screenAspect / 2, frustumSize / 2, frustumSize / -2, 1, 500);
+			cameraOrtho.name = "cameraOptionOrtho";
+
+
+			cameraRig = new THREE.Group();
+
+			cameraRig.add(cameraPerspective);
+			cameraRig.add(cameraOrtho);
+
+			//
+
+
+
+			// Orbit Control
+
+			switch (settings.defaultCamera) {
+				case "perspective":
+					controls = new THREE.OrbitControls(cameraPerspective);
+					break;
+				case "orthogonal":
+					controls = new THREE.OrbitControls(cameraOrtho);
+					break;
+				default:
+					console.error("ERROR: Stödjer ej vald kamera (" + settings.defaultCamera + ") som standard.");
+			}
+
+			controls.mouseButtons = {
+				LEFT: THREE.MOUSE.LEFT,
+				MIDDLE: THREE.MOUSE.MIDDLE,
+				RIGHT: THREE.MOUSE.RIGHT
+			}
+
+			controls.screenSpacePanning = true;
+
+
+			if (autoRotate == 1) {
+				controls.autoRotate = true;
+				controls.autoRotateSpeed = autoRotateSpeed | 2;
+			}
+			else if (autoRotate == 0) {
+				controls.autoRotate = false;
+			}
+			else {
+				if (settings.view.autoRotate) {
+					controls.autoRotate = true;
+					controls.autoRotateSpeed = settings.view.autoRotateSpeed | 2;
+				}
+				else {
+					controls.autoRotate = false;
+				}
+			}
+
+			//
+
+
+
+			if (settings.view.enableExtent)
+				fitCameraToObject(cameraPerspective, cameraOrtho, object, cameraScaleOffset, controls);
+
+
+
+			// scene
+
+			scene = new THREE.Scene();
+
+			scene.background = new THREE.Color(0xcccccc);
+
+			scene.add(ambientLight);
+
+			cameraPerspective.add(pointLightPerspective);
+			cameraOrtho.add(pointLightOrtho);
+
+			scene.add(cameraRig);
+			scene.add(object);
+
+			//
+
+
+			// Default camera
+			switch (settings.defaultCamera) {
+				case "perspective":
+					activeCamera = cameraPerspective;
+					pointLightOrtho.visible = false;
+					break;
+				case "orthogonal":
+					activeCamera = cameraOrtho;
+					pointLightPerspective.visible = false;
+					break;
+				default:
+					console.error("ERROR: Stödjer ej vald kamera (" + settings.defaultCamera + ") som standard.");
+			}
+			
+
+			// renderer
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(screenWidth, screenHeight);
+			document.body.appendChild(renderer.domElement);
+
+			//
+
+
+
+
+
+			window.addEventListener('resize', onWindowResize, false);
+
+
+			render();
+
+		}
+
+
+
+		function loadModel(callback) {
+
+			THREE.Loader.Handlers.add(/\.dds$/i, new THREE.DDSLoader());
+
+
+			new THREE.MTLLoader()
+				.setPath(modelRelPathFileMtl)
+				.load(modelFileMtl, function (materials) {
+
+					materials.preload();
+
+					new THREE.OBJLoader()
+						.setMaterials(materials)
+						.setPath(modelRelPathFileObj)
+						.load(modelFileObj, function (_object) {
+
+							object = _object;
+
+							if (settings.debug) {
+								console.log("Modell laddad, position: ");
+								console.log(object.position);
+								console.log("Modell laddad, rotation: ");
+								console.log(object.rotation);
+							}
+
+							// object.position.x = settings.model.position.x;
+
+							// Ändra modells ingående position, rotation och skala genom inställning 
+							if (settings.model.position.x)
+								object.position.x = settings.model.position.x;
+							if (settings.model.position.y)
+								object.position.y = settings.model.position.y;
+							if (settings.model.position.z)
+								object.position.z = settings.model.position.z;
+							if (settings.model.rotation.x)
+								object.rotation.x = settings.model.rotation.x * Math.PI / 180;
+							if (settings.model.rotation.y)
+								object.rotation.y = settings.model.rotation.y * Math.PI / 180;
+							if (settings.model.rotation.z)
+								object.rotation.z = settings.model.rotation.z * Math.PI / 180;
+
+							if (settings.debug) {
+								console.log("Ändrad, position: ");
+								console.log(object.position);
+								console.log("Ändrad, rotation: ");
+								console.log(object.rotation);
+							}
+
+
+							callback();
+
+						});
+
+				});
+
+		}
+
+
+		function onWindowResize() {
+
+			screenWidth = window.innerWidth;
+			screenHeight = window.innerHeight;
+			screenAspect = screenWidth / screenHeight;
+
+			renderer.setSize(screenWidth, screenHeight);
+
+
+
+			// Uppdatera cameraPerspective
+
+			cameraPerspective.aspect = screenAspect;
+
+			cameraPerspective.updateProjectionMatrix();
+
+			//
+
+
+
+			// Uppdatera cameraOrtho
+
+			const boundingBox = new THREE.Box3();
+			boundingBox.setFromObject(object);
+			const size = new THREE.Vector3();
+			boundingBox.getSize(size);
+			var modelAspect = size.x / size.y;
+			var cameraOrthoWidth, cameraOrthoHeight;
+			if (modelAspect < 1) {
+				if (screenAspect < 1) {
+					cameraOrthoWidth = size.y * screenAspect * 2;
+					cameraOrthoHeight = size.y * 2;
+				}
+				else {
+					cameraOrthoWidth = size.y * screenAspect;
+					cameraOrthoHeight = size.y;
+				}
+			}
+			else {
+				if (screenAspect < 1) {
+					cameraOrthoWidth = size.x;
+					cameraOrthoHeight = size.x / screenAspect;
+				}
+				else {
+					cameraOrthoWidth = size.x * 2;
+					cameraOrthoHeight = size.x / screenAspect * 2;
+				}
+			}
+
+			cameraOrtho.left = cameraOrthoWidth / -2 * cameraScaleOffset;
+			cameraOrtho.right = cameraOrthoWidth / 2 * cameraScaleOffset;
+			cameraOrtho.top = cameraOrthoHeight / 2 * cameraScaleOffset;
+			cameraOrtho.bottom = cameraOrthoHeight / -2 * cameraScaleOffset;
+
+			cameraOrtho.updateProjectionMatrix();
+
+			//
+
+
+
+			render();
+
+		}
+
+
+		function animate() {
+
+			requestAnimationFrame(animate);
+
+			controls.update();
+
+			render();
+
+		}
+
+
+		function render() {
+
+			renderer.render(scene, activeCamera);
+
+		}
+
+
+		function initView() {
+
+			controls.reset();
+			render();
+
+
+			if (settings.debug) {
+				console.log("Camera reinit");
+				console.log(activeCamera);
+				console.log("SETTINGS from initView");
+				console.log(settings);
+			}
+
+		}
+
+
+		function changeCamera(elmntId) {
+
+			var d = new THREE.Vector3(),
+				q = new THREE.Quaternion(),
+				s = new THREE.Vector3();
+			switch (elmntId) {
+				case "cameraOptionOrtho":
+					cameraPerspective.matrixWorld.decompose(d, q, s);
+					console.log(d);
+					cameraOrtho.position.copy(d);
+					cameraOrtho.quaternion.copy(q);
+					cameraOrtho.scale.copy(s);
+					activeCamera = cameraOrtho;
+
+					pointLightPerspective.visible = false;
+					pointLightOrtho.visible = true;
+					break;
+				case "cameraOptionPerspective":
+					cameraOrtho.matrixWorld.decompose(d, q, s);
+					console.log(d);
+					cameraPerspective.position.copy(d);
+					cameraPerspective.quaternion.copy(q);
+					cameraPerspective.scale.copy(s);
+					activeCamera = cameraPerspective;
+
+					pointLightPerspective.visible = true;
+					pointLightOrtho.visible = false;
+					break;
+			}
+
+			controls.object = activeCamera;
+			controls.update();
+
+		}
+
+		// Från https://discourse.threejs.org/t/camera-zoom-to-fit-object/936/3
+		const fitCameraToObject = function (cameraPerspective, cameraOrtho, object, offset, controls) {
+
+			// get bounding box of object - this will be used to setup controls and camera
+			const boundingBox = new THREE.Box3();
+
+			boundingBox.setFromObject(object);
+
+			const center = new THREE.Vector3();
+			boundingBox.getCenter(center);
+
+			const size = new THREE.Vector3();
+			boundingBox.getSize(size);
+
+			if (settings.debug) {
+				console.log("Storlek modell")
+				console.log(size)
+				console.log("Modell min max")
+				console.log(boundingBox.min, boundingBox.max);
+			}
+
+
+			// get the max side of the bounding box (fits to width OR height as needed )
+			const maxDim = Math.max(size.x, size.y, size.z);
+			let cameraPerspectiveZ, cameraOrthoZ;
+
+
+			// https://discourse.threejs.org/t/camera-zoom-to-fit-object/936/16
+			const fov = cameraPerspective.fov * (Math.PI / 180);
+
+			if (screenAspect > 1) {
+				cameraPerspectiveZ = maxDim / 2 / Math.tan(fov / 2);
+				if (settings.debug) {
+					console.log("vertikal fov");
+				}
+				cameraOrthoZ = maxDim * 2;
+			}
+			else {
+				cameraPerspectiveZ = maxDim / 2 / Math.tan(fov * cameraPerspective.aspect / 2);
+				if (settings.debug) {
+					console.log("horisontel fov");
+				}
+				cameraOrthoZ = maxDim;
+			}
+
+
+			// zoom out a little so that objects don't fill the screen
+			cameraPerspectiveZ *= offset;
+			cameraOrthoZ *= offset;
+
+			// camera.position.z = center.z + cameraZ;
+			cameraPerspective.position.z = center.z + cameraPerspectiveZ;
+			cameraOrtho.position.z = center.z + cameraOrthoZ;
+			if (settings.debug) {
+				console.log("cameraPerspective z " + cameraPerspective.position.z)
+				console.log("cameraOrtho z " + cameraOrtho.position.z)
+			}
+
+			const minZ = boundingBox.min.z;
+			const cameraPerspectiveToFarEdge = (minZ < 0) ? -minZ + cameraPerspectiveZ : cameraPerspectiveZ - minZ;
+			const cameraOrthoToFarEdge = (minZ < 0) ? -minZ + cameraOrthoZ : cameraOrthoZ - minZ;
+
+
+			cameraPerspective.far = cameraPerspectiveToFarEdge * 3;
+			cameraPerspective.zoom = settings.view.cameraInitial.zoom | 1;
+			cameraPerspective.updateProjectionMatrix();
+
+			cameraOrtho.far = cameraOrthoToFarEdge * 3;
+
+			var modelAspect = size.x / size.y;
+
+			if (settings.debug) {
+				console.log("Modell Aspect " + modelAspect);
+				console.log("Screen Aspect " + screenAspect);
+			}
+			var cameraOrthoWidth, cameraOrthoHeight;
+			if (modelAspect < 1) {
+				if (screenAspect < 1) {
+					cameraOrthoWidth = size.y * screenAspect * 2;
+					cameraOrthoHeight = size.y * 2;
+				}
+				else {
+					cameraOrthoWidth = size.y * screenAspect;
+					cameraOrthoHeight = size.y;
+				}
+			}
+			else {
+				if (screenAspect < 1) {
+					cameraOrthoWidth = size.x;
+					cameraOrthoHeight = size.x / screenAspect;
+				}
+				else {
+					cameraOrthoWidth = size.x * 2;
+					cameraOrthoHeight = size.x / screenAspect * 2;
+				}
+			}
+
+
+			cameraOrtho.left = cameraOrthoWidth / -2 * offset - settings.model.position.x / 2;
+			cameraOrtho.right = cameraOrthoWidth / 2 * offset - settings.model.position.x / 2;
+			cameraOrtho.top = cameraOrthoHeight / 2 * offset - settings.model.position.y / 2;
+			cameraOrtho.bottom = cameraOrthoHeight / -2 * offset - settings.model.position.y / 2;
+			cameraOrtho.zoom = settings.view.cameraInitial.zoom | 1;
+			cameraOrtho.updateProjectionMatrix();
+
+
+
+			if (controls) {
+
+				// set camera to rotate around center of loaded object
+				controls.target = center;
+
+				// prevent camera from zooming out far enough to create far plane cutoff
+				// controls.maxDistance = cameraToFarEdge * 2;
+				controls.maxDistance = Math.max(cameraPerspectiveToFarEdge, cameraOrthoToFarEdge) * 2;
+
+				controls.saveState();
+				// controls.update();
+
+			} else {
+
+				// cameraPerspective.lookAt(center)
+				// cameraOrtho.lookAt(center)
+				cameraRig.lookAt(center)
+
+			}
+
+
+			cameraInitial.target = center;
+
+
+			if (settings.debug) {
+				console.log("SETTINGS from fitCameraToObject");
+				console.log(settings);
+			}
+
+		}
+
+	</script>
+
+
+
+
+</body>
+
+</html>
