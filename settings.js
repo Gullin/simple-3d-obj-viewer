@@ -10,12 +10,12 @@ var settings = {
         "name": "Demodata",
         "totalDelayTime": 1000, // I millisekunder (modell laddar inte snabbare än följande tid)
         "obj": {
-            "objFolderPath": "model/jantan/",
-            "mtlFolderPath": "model/jantan/",
-            "objFilePath": "jantan.obj",
+            "objFolderPath": "model/ikonbyggnader/citadellbadet/",
+            "mtlFolderPath": "model/ikonbyggnader/citadellbadet/",
+            "objFilePath": "sammanslagen.obj",
             "mtlFilePath": "materials.mtl"
-            // "objFolderPath": "model/test-demodata/",
-            // "mtlFolderPath": "model/test-demodata/",
+            // "objFolderPath": "model/demodata/",
+            // "mtlFolderPath": "model/demodata/",
             // "objFilePath": "test-demodata.obj",
             // "mtlFilePath": "test-demodata.mtl"
         },
