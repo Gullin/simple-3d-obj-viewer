@@ -2,6 +2,7 @@
    detta görs rätt om bredden blir överdrivet större.
  * Clipping i större modeller (ex. Jäntan). Ställas programmatiskt rätt istället.
  * Kameraprojektionen bibehålls mellan kamerorna men inte OrbitControllens inzoomning
+ * OK [v0.12-alfa]      - Hantering för när obj-filen inte har någon materialfil
  * OK [v0.11-alfa]      - Bibehållen betraktning mellan kamerabyten. Kopierar resp. kameras placering (projektionsmatris) mellan projektioskamera och ortogonalkamera.
  * OK [v0.10.3-alfa]    - Stänga av verktyg genom inställningar i settings.js. URL-parameter prioriteras.
  * OK [v0.10.2-alfa]    - Ordnat med individuell pointLight för resp. kamera

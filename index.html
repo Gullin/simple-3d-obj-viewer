@@ -432,55 +432,105 @@
 
 			new THREE.MTLLoader()
 				.setPath(modelRelPathFileMtl)
-				.load(modelFileMtl, function (materials) {
+				.load(
+					modelFileMtl,
+					function (materials) {
 
-					materials.preload();
+						materials.preload();
 
-					new THREE.OBJLoader()
-						.setMaterials(materials)
-						.setPath(modelRelPathFileObj)
-						.load(modelFileObj, function (_object) {
+						new THREE.OBJLoader()
+							.setMaterials(materials)
+							.setPath(modelRelPathFileObj)
+							.load(modelFileObj, function (_object) {
 
-							object = _object;
+								object = _object;
 
-							if (settings.debug) {
-								console.log("Modell laddad, position: ");
-								console.log(object.position);
-								console.log("Modell laddad, rotation: ");
-								console.log(object.rotation);
-							}
+								if (settings.debug) {
+									console.log("Modell laddad, position: ");
+									console.log(object.position);
+									console.log("Modell laddad, rotation: ");
+									console.log(object.rotation);
+								}
 
-							// object.position.x = settings.model.position.x;
+								// object.position.x = settings.model.position.x;
 
-							// Ändra modells ingående position, rotation och skala genom inställning 
-							if (settings.model.position.x)
-								object.position.x = settings.model.position.x;
-							if (settings.model.position.y)
-								object.position.y = settings.model.position.y;
-							if (settings.model.position.z)
-								object.position.z = settings.model.position.z;
-							if (settings.model.rotation.x)
-								object.rotation.x = settings.model.rotation.x * Math.PI / 180;
-							if (settings.model.rotation.y)
-								object.rotation.y = settings.model.rotation.y * Math.PI / 180;
-							if (settings.model.rotation.z)
-								object.rotation.z = settings.model.rotation.z * Math.PI / 180;
+								// Ändra modells ingående position, rotation och skala genom inställning 
+								if (settings.model.position.x)
+									object.position.x = settings.model.position.x;
+								if (settings.model.position.y)
+									object.position.y = settings.model.position.y;
+								if (settings.model.position.z)
+									object.position.z = settings.model.position.z;
+								if (settings.model.rotation.x)
+									object.rotation.x = settings.model.rotation.x * Math.PI / 180;
+								if (settings.model.rotation.y)
+									object.rotation.y = settings.model.rotation.y * Math.PI / 180;
+								if (settings.model.rotation.z)
+									object.rotation.z = settings.model.rotation.z * Math.PI / 180;
 
-							if (settings.debug) {
-								console.log("Ändrad, position: ");
-								console.log(object.position);
-								console.log("Ändrad, rotation: ");
-								console.log(object.rotation);
-							}
+								if (settings.debug) {
+									console.log("Ändrad, position: ");
+									console.log(object.position);
+									console.log("Ändrad, rotation: ");
+									console.log(object.rotation);
+								}
 
 
-							callback();
+								callback();
 
-						});
+							});
 
-				});
+					},
+					function () { return },
+					function (error) {
+						if (error) {
 
-		}
+							new THREE.OBJLoader()
+							.setPath(modelRelPathFileObj)
+							.load(modelFileObj, function (_object) {
+
+								object = _object;
+
+								if (settings.debug) {
+									console.log("Modell laddad, position: ");
+									console.log(object.position);
+									console.log("Modell laddad, rotation: ");
+									console.log(object.rotation);
+								}
+
+								// object.position.x = settings.model.position.x;
+
+								// Ändra modells ingående position, rotation och skala genom inställning 
+								if (settings.model.position.x)
+									object.position.x = settings.model.position.x;
+								if (settings.model.position.y)
+									object.position.y = settings.model.position.y;
+								if (settings.model.position.z)
+									object.position.z = settings.model.position.z;
+								if (settings.model.rotation.x)
+									object.rotation.x = settings.model.rotation.x * Math.PI / 180;
+								if (settings.model.rotation.y)
+									object.rotation.y = settings.model.rotation.y * Math.PI / 180;
+								if (settings.model.rotation.z)
+									object.rotation.z = settings.model.rotation.z * Math.PI / 180;
+
+								if (settings.debug) {
+									console.log("Ändrad, position: ");
+									console.log(object.position);
+									console.log("Ändrad, rotation: ");
+									console.log(object.rotation);
+								}
+
+
+								callback();
+
+							});
+
+						}
+					}
+				);
+
+			}
 
 
 		function onWindowResize() {
@@ -616,6 +666,7 @@
 			controls.update();
 
 		}
+
 
 		// Från https://discourse.threejs.org/t/camera-zoom-to-fit-object/936/3
 		const fitCameraToObject = function (cameraPerspective, cameraOrtho, object, offset, controls) {
