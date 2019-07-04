@@ -1,6 +1,6 @@
 // UTF-8
 var settings = {
-    "version": "0.11-alfa",
+    "version": "0.12-alfa",
     "debug": false,
     "defaultCamera": "perspective", // orthogonal | perspective
     "tools": {
